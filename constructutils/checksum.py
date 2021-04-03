@@ -29,9 +29,9 @@ class ChecksumValue:
 
     expected: bytes
 
-    def __init__(self, expected: bytes, func: Callable[[bytes], 'hashlib._Hash'], name: str):
+    def __init__(self, expected: bytes, hashfunc: Callable[[bytes], 'hashlib._Hash'], name: str):
         self.expected = expected
-        self._func = func
+        self._hashfunc = hashfunc
         self._name = name
 
     def verify(self, data: bytes):
@@ -45,7 +45,7 @@ class ChecksumValue:
         Raises:
             ChecksumError: If checksum/digest of given data does not match expected value
         '''
-        digest = self._func(data).digest()
+        digest = self._hashfunc(data).digest()
         if self.expected != digest:
             raise ChecksumError('hash mismatch', self.expected, digest)
 
@@ -58,10 +58,10 @@ class Checksum(Subconstruct):
     Parses checksum bytes into a :class:`ChecksumValue`, based on a :mod:`hashlib.*` method
     '''
 
-    def __init__(self, func: Callable[[bytes], 'hashlib._Hash']):
-        tmp = func(b'')
+    def __init__(self, hashfunc: Callable[[bytes], 'hashlib._Hash']):
+        tmp = hashfunc(b'')
         super().__init__(Hex(Bytes(tmp.digest_size)))
-        self._create_checksumvalue = functools.partial(ChecksumValue, func=func, name=tmp.name)  # type: Callable[[bytes], ChecksumValue]
+        self._create_checksumvalue = functools.partial(ChecksumValue, hashfunc=hashfunc, name=tmp.name)  # type: Callable[[bytes], ChecksumValue]
 
     def _parse(self, stream, context, path):
         return self._create_checksumvalue(
