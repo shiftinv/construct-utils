@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 
 def read(filename):
@@ -17,7 +17,7 @@ setup(
     author='shiftinv',
     url='https://github.com/shiftinv/construct-utils',
     license='Apache 2.0',
-    packages=find_packages(),
+    packages=['constructutils'],
     install_requires=read('requirements.txt').splitlines(),
     python_requires='>=3.7',
     classifiers=[
