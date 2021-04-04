@@ -1,7 +1,8 @@
 import os
 import inspect
 from dataclasses import dataclass
-from construct import Construct, Subconstruct, Prefixed, ConstructError, SizeofError, Path, \
+from construct import \
+    Construct, Subconstruct, Prefixed, ConstructError, SizeofError, Path, \
     stream_tell, stream_read, stream_write, evaluate, singleton
 from typing import Any, Optional, List
 

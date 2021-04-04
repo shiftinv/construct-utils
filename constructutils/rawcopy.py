@@ -1,6 +1,8 @@
 from construct import Struct, Array, RawCopy, ConstructError
 from typing import Optional, Union
 
+from .noemit import NoEmitMixin
+
 
 class RawCopyError(ConstructError):
     pass
@@ -13,7 +15,7 @@ class RawCopyBytes(bytes):
     pass
 
 
-class AttributeRawCopy(RawCopy):
+class AttributeRawCopy(NoEmitMixin, RawCopy):
     '''
     Similar to :class:`RawCopy`, but instead of returning a dict `{'data': [bytes], 'value': [Any]}`
     it assigns the raw `data` to a property of `value` (`__raw__` by default, can be changed with `@` or using the parameters).

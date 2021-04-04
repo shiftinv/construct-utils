@@ -1,11 +1,13 @@
 from construct import Struct, Subconstruct, ConstructError
 
+from .noemit import NoEmitMixin
+
 
 class InlineError(ConstructError):
     pass
 
 
-class InliningStruct(Struct):
+class InliningStruct(NoEmitMixin, Struct):
     '''
     Similar to a standard :class:`Struct`,
     but inlines properties of :class:`InlineStruct` descendants into itself

@@ -1,11 +1,13 @@
 import io
 import collections
-from construct import Array, Byte, Container
+from construct import Array, Bytes, Byte, Container
+
 from constructutils import AttributeRawCopy
 from constructutils.misc import \
     DictZipAdapter, \
     seek_temporary, \
     iter_context_tree, get_root_context, get_root_stream
+from constructutils.noemit import NoEmitMixin
 
 
 def test_dictzipadapter():
@@ -26,6 +28,19 @@ def test_dictzipadapter_rawcopy():
 
     assert value == {'a': 1, 'b': 2}
     assert value.__raw__ == b'\x01\x02'
+
+
+def test_noemitmixin():
+    class NoEmitBytes(NoEmitMixin, Bytes):
+        pass
+
+    # should compile custom code
+    inst = Bytes(2)
+    assert str(id(inst)) not in inst.compile().source
+
+    # should fall back to linked instance
+    inst = NoEmitBytes(2)
+    assert str(id(inst)) in inst.compile().source
 
 
 def test_seek_temporary():

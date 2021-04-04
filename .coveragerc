@@ -9,3 +9,6 @@ exclude_lines =
     def __str__
 
     @overload
+
+    raise AssertionError
+    raise NotImplementedError

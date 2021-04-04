@@ -1,5 +1,6 @@
 import pytest
 import hashlib
+
 from constructutils import Checksum, ChecksumValue, ChecksumError
 
 

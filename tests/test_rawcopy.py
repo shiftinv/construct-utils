@@ -1,5 +1,6 @@
 import pytest
 from construct import Struct, Array, Byte
+
 from constructutils import RawCopyError, AttributeRawCopy
 
 

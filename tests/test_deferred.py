@@ -3,6 +3,7 @@ import pytest
 from construct import \
     Struct, Tell, GreedyBytes, Byte, Array, Computed, Prefixed, \
     SizeofError, this
+
 from constructutils import DeferredError, DeferredValue, WriteDeferredValue, CheckDeferredValues
 
 
