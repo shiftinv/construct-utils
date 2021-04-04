@@ -1,7 +1,7 @@
 import contextlib
 import collections
 from construct import \
-    Adapter, Container, \
+    Adapter, Container, ListContainer, \
     stream_tell, stream_seek
 from typing import Iterator, Union, List, Tuple, IO
 
@@ -9,11 +9,20 @@ from .rawcopy import RawCopyBytes
 
 
 class DictZipAdapter(Adapter):
+    '''
+    Adapter for joining a predefined list of keys with a parsed list of values.
+
+    Subconstruct must parse to a :class:`ListContainer`, e.g. :class:`Array` or :class:`Sequence`;
+    build input must be an :class:`OrderedDict`.
+    '''
+
     def __init__(self, keys: Union[List, Tuple], subcon):
         super().__init__(subcon)
         self.keys = keys
 
-    def _decode(self, obj: list, context, path):
+    def _decode(self, obj: ListContainer, context, path):
+        assert isinstance(obj, ListContainer)
+
         assert len(self.keys) == len(obj)
         container = Container(zip(self.keys, obj))
 
