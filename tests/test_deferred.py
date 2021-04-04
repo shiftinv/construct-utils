@@ -7,13 +7,13 @@ from constructutils import DeferredError, DeferredValue, WriteDeferredValue, Che
 
 
 def test_placeholder():
-    assert DeferredValue(Byte, 0xff).build(None) == b'\xff'
+    assert len(DeferredValue(Byte).build(None)) == 1
 
 
 def test_single():
     s = Struct(
         'a' / Byte,
-        'b' / DeferredValue(Byte, 0xff),
+        'b' / DeferredValue(Byte),
         'c' / Byte,
         'new_value' / Tell,
         WriteDeferredValue(this.new_value, this.b)
@@ -29,7 +29,7 @@ def test_single():
 def test_nested():
     s = Struct(
         'a' / Byte,
-        'b' / DeferredValue(Byte, 0xff),
+        'b' / DeferredValue(Byte),
         'c' / Byte,
         'struct' / Struct(
             'new_value' / Tell,
@@ -49,7 +49,7 @@ def test_complex_prefixed():
     s = Struct(
         'v' / Byte,
         'a1' / Prefixed(Byte, Array(2, Struct(
-            'value' / DeferredValue(Byte, 0x00)
+            'value' / DeferredValue(Byte)
         ))),
         'a2' / Array(2, Struct(
             '@offset' / Tell,
@@ -87,19 +87,20 @@ def test_complex_prefixed():
 
 def test_constant_size():
     with pytest.raises(DeferredError) as e:
-        DeferredValue(GreedyBytes, b'')
+        DeferredValue(GreedyBytes)
     assert isinstance(e.value.__context__, SizeofError)
 
 
 def test_unexpected_placeholder():
     def _change_placeholder(context):
         stream = context._io
+        placeholder = context.a.placeholder_data[0]
         stream.seek(-1, os.SEEK_CUR)
-        stream.write(b'\xff')
+        stream.write(bytes([(placeholder + 1) & 0xff]))
 
     s = Struct(
-        'a' / DeferredValue(Byte, 0x00),
-        Computed(_change_placeholder),  # overwrites 0x00 with 0xff, should fail sanity check later
+        'a' / DeferredValue(Byte),
+        Computed(_change_placeholder),  # overwrites placeholder with different value, should fail sanity check later
         WriteDeferredValue(0x42, this.a)
     )
 
@@ -109,7 +110,7 @@ def test_unexpected_placeholder():
 
 def test_build_no_value():
     s = Struct(
-        'a' / DeferredValue(Byte, 0x00),
+        'a' / DeferredValue(Byte),
         WriteDeferredValue(0x42, this.a)
     )
 
@@ -129,7 +130,7 @@ def test_build_invalid_target():
 
 def test_check_deferred():
     s = Struct(
-        'a' / DeferredValue(Byte, 0x00),
+        'a' / DeferredValue(Byte),
         CheckDeferredValues
     )
 

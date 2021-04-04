@@ -1,7 +1,8 @@
+import os
 import inspect
 from dataclasses import dataclass
 from construct import Construct, Subconstruct, Prefixed, ConstructError, SizeofError, Path, \
-    stream_tell, stream_seek, stream_read, evaluate, singleton
+    stream_tell, stream_read, stream_write, evaluate, singleton
 from typing import Any, Optional, List
 
 from .misc import seek_temporary, get_root_context, get_root_stream
@@ -46,7 +47,7 @@ class DeferredMeta:
         subcon (Subconstruct): Subconstruct of corresponding :class:`DeferredValue` instance
         path (str): Parsing/Building path of corresponding :class:`DeferredValue` instance
         target_offset (int): Target offset in outermost stream
-        placeholder_data (bytes): Built value of placeholder, used for sanity checks
+        placeholder_data (bytes): Temporary placeholder bytes, used for sanity checks
         new_value (Any, optional): Final written value, only valid if :attr:`new_value_written` is True
         new_value_written (bool): True if a final value was written
     '''
@@ -74,8 +75,8 @@ class DeferredMeta:
         # seek to target offset, check if data matches originally written placeholder data
         with seek_temporary(stream, path, self.target_offset):
             read_data = stream_read(stream, len(self.placeholder_data), path)
-            if read_data != self.placeholder_data:
-                raise DeferredError(f'something went wrong, data at target location ({read_data.hex()}) does not equal expected placeholder data ({self.placeholder_data.hex()})', path=path)
+        if read_data != self.placeholder_data:
+            raise DeferredError(f'something went wrong, data at target location ({read_data.hex()}) does not equal expected placeholder data ({self.placeholder_data.hex()})', path=path)
 
 
 class DeferredValue(Subconstruct):
@@ -86,13 +87,12 @@ class DeferredValue(Subconstruct):
     which should later be updated/finalized using :class:`WriteDeferredValue`.
     '''
 
-    def __init__(self, subcon, placeholder):
+    def __init__(self, subcon):
         super().__init__(subcon)
         try:
-            subcon.sizeof()
+            self.placeholder_size = subcon.sizeof()
         except SizeofError as e:
             raise DeferredError('couldn\'t determine size of deferred field (must be constant)') from e
-        self.placeholder = placeholder
         self.flagbuildnone = True  # no value has to be provided for building
 
     # this is probably not reliable, but required for working around nested BytesIO calls
@@ -137,13 +137,8 @@ class DeferredValue(Subconstruct):
         target_offset = self.__get_offset_in_outer_stream(stream, context, path)
 
         # build placeholder value in place of real value
-        pre_offset = stream_tell(stream, path)
-        self.subcon._build(self.placeholder, stream, context, path)
-        post_offset = stream_tell(stream, path)
-
-        # re-read written data for later comparison
-        stream_seek(stream, pre_offset, 0, path)
-        placeholder_data = stream_read(stream, post_offset - pre_offset, path)
+        placeholder_data = os.urandom(self.placeholder_size)
+        stream_write(stream, placeholder_data, len(placeholder_data), path)
 
         # create and return `DeferredMeta` object, which is later used by `WriteDeferredValue`
         meta = DeferredMeta(self.subcon, path, target_offset, placeholder_data)
