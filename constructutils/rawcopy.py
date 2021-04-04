@@ -1,8 +1,8 @@
-from construct import Struct, Array, RawCopy
+from construct import Struct, Array, RawCopy, ConstructError
 from typing import Optional, Union
 
 
-class RawCopyError(Exception):
+class RawCopyError(ConstructError):
     pass
 
 
@@ -50,7 +50,7 @@ class AttributeRawCopy(RawCopy):
 
         # store raw bytes in parsed data
         if hasattr(rc.value, self.__raw_key):
-            raise RawCopyError(f'context already has a \'{self.__raw_key}\' attribute')
+            raise RawCopyError(f'context already has a \'{self.__raw_key}\' attribute', path=path)
         object.__setattr__(rc.value, self.__raw_key, RawCopyBytes(rc.data))
 
         # return parsed data only

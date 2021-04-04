@@ -1,7 +1,7 @@
-from construct import Struct, Subconstruct
+from construct import Struct, Subconstruct, ConstructError
 
 
-class InlineError(Exception):
+class InlineError(ConstructError):
     pass
 
 
@@ -102,20 +102,20 @@ class InlineStruct(InliningStruct):
     '''
 
     def _parse(self, stream, context, path):
-        self.__check_inline(context)
+        self.__check_inline(context, path)
         obj = super()._parse(stream, context, path)
         # insert parsed data into outer context
         context.update(obj)
         return obj
 
     def _build(self, obj, stream, context, path):
-        self.__check_inline(context)
+        self.__check_inline(context, path)
         subcontext = super()._build(obj, stream, context, path)
         # insert built data into outer context
         context.update(subcontext)
         return subcontext
 
     @classmethod
-    def __check_inline(cls, context):
+    def __check_inline(cls, context, path):
         if not context._.get('_is_inline', False):
-            raise InlineError(f'`{cls.__name__}`s may only be part of `InliningStruct`s')
+            raise InlineError(f'`{cls.__name__}`s may only be part of `InliningStruct`s', path=path)
