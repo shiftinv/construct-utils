@@ -2,6 +2,10 @@ from construct import Struct
 from construct.core import Subconstruct
 
 
+class InlineError(Exception):
+    pass
+
+
 class InliningStruct(Struct):
     '''
     Similar to a standard :class:`Struct`,
@@ -115,4 +119,4 @@ class InlineStruct(InliningStruct):
     @classmethod
     def __check_inline(cls, context):
         if not context._.get('_is_inline', False):
-            raise RuntimeError(f'`{cls.__name__}`s may only be part of `InliningStruct`s')
+            raise InlineError(f'`{cls.__name__}`s may only be part of `InliningStruct`s')

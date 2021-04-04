@@ -13,8 +13,8 @@ class ChecksumError(Exception):
     expected: bytes
     actual: bytes
 
-    def __init__(self, message: str, expected: bytes, actual: bytes):
-        super().__init__(message)
+    def __init__(self, message: str, expected: bytes, actual: bytes, *args):
+        super().__init__(message, expected, actual, *args)
         self.expected = expected
         self.actual = actual
 

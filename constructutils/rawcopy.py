@@ -2,6 +2,10 @@ from construct import Struct, Array, RawCopy
 from typing import Union
 
 
+class RawCopyError(Exception):
+    pass
+
+
 class AttributeRawCopy(RawCopy):
     '''
     Similar to :class:`RawCopy`, but instead of returning a dict `{'data': [bytes], 'value': [Any]}`
@@ -26,14 +30,15 @@ class AttributeRawCopy(RawCopy):
 
     def __init__(self, subcon: Union[Struct, Array]):
         if not isinstance(subcon, (Struct, Array)):
-            raise RuntimeError('AttributeRawCopy must contain `Struct` or `Array` instance')
+            raise RawCopyError('AttributeRawCopy must contain `Struct` or `Array` instance')
         super().__init__(subcon)
 
     def _parse(self, stream, context, path):
         rc = super()._parse(stream, context, path)
 
         # store raw bytes in parsed data
-        assert not hasattr(rc.value, self.__raw_key)  # just to be sure
+        if hasattr(rc.value, self.__raw_key):
+            raise RawCopyError(f'context already has a \'{self.__raw_key}\' attribute')
         setattr(rc.value, self.__raw_key, rc.data)
 
         # return parsed data only

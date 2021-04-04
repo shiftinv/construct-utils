@@ -3,6 +3,6 @@ from .checksum import \
 from .deferred import \
     DeferredError, DeferredValue, WriteDeferredValue, CheckDeferredValues
 from .inline import \
-    InliningStruct, InlineStruct
+    InlineError, InliningStruct, InlineStruct
 from .rawcopy import \
-    AttributeRawCopy
+    RawCopyError, AttributeRawCopy
