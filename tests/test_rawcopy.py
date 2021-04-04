@@ -20,6 +20,17 @@ def test_parse():
         assert getattr(value.array, '__raw__' if name is None else name) == b'\x01\x02\x03'
 
 
+def test_parse_struct():
+    s = '__raw__' @ AttributeRawCopy(Struct('a' / Byte))
+
+    value = s.parse(b'\xff')
+    assert value == {'a': 0xff}
+    assert value.__raw__ == b'\xff'
+
+    # make sure that raw data would not be returned when iterating over dict/container
+    assert '__raw__' not in value
+
+
 def test_build():
     # should pass data to subcon
     s = AttributeRawCopy(Array(3, Byte))

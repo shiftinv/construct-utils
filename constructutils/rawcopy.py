@@ -51,7 +51,7 @@ class AttributeRawCopy(RawCopy):
         # store raw bytes in parsed data
         if hasattr(rc.value, self.__raw_key):
             raise RawCopyError(f'context already has a \'{self.__raw_key}\' attribute')
-        setattr(rc.value, self.__raw_key, RawCopyBytes(rc.data))
+        object.__setattr__(rc.value, self.__raw_key, RawCopyBytes(rc.data))
 
         # return parsed data only
         return rc.value
