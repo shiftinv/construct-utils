@@ -1,8 +1,15 @@
 from construct import Struct, Array, RawCopy
-from typing import Optional, Union, overload
+from typing import Optional, Union
 
 
 class RawCopyError(Exception):
+    pass
+
+
+class RawCopyBytes(bytes):
+    '''
+    Wrapper around :class:`bytes`, used for copying custom attributes in :class:`DictZipAdapter`
+    '''
     pass
 
 
@@ -44,7 +51,7 @@ class AttributeRawCopy(RawCopy):
         # store raw bytes in parsed data
         if hasattr(rc.value, self.__raw_key):
             raise RawCopyError(f'context already has a \'{self.__raw_key}\' attribute')
-        setattr(rc.value, self.__raw_key, rc.data)
+        setattr(rc.value, self.__raw_key, RawCopyBytes(rc.data))
 
         # return parsed data only
         return rc.value
