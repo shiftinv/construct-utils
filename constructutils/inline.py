@@ -1,5 +1,4 @@
-from construct import Struct
-from construct.core import Subconstruct
+from construct import Struct, Subconstruct
 
 
 class InlineError(Exception):

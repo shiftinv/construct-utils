@@ -1,7 +1,6 @@
 from typing import List, Tuple
-from construct.core import Construct
 import pytest
-from construct import Byte, Struct
+from construct import Byte, Struct, Construct
 from constructutils import InlineError, InliningStruct, InlineStruct
 
 
