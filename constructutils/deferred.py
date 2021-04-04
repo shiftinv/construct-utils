@@ -5,7 +5,7 @@ from construct import Construct, Subconstruct, Prefixed, ConstructError, SizeofE
     stream_tell, stream_read, stream_write, evaluate, singleton
 from typing import Any, Optional, List
 
-from .misc import seek_temporary, get_root_context, get_root_stream
+from .misc import seek_temporary, iter_context_tree, get_root_context, get_root_stream
 
 
 class DeferredError(ConstructError):
@@ -100,17 +100,16 @@ class DeferredValue(Subconstruct):
         offset = stream_tell(stream, path)
 
         # collect offsets of enclosing streams by walking up the tree
-        def collect(context, prev_stream):
-            nonlocal offset
-            curr_stream = getattr(context, '_io', None)
-            if curr_stream is not None:
-                # add to offset if stream changed
-                if curr_stream is not prev_stream:
-                    offset += stream_tell(context._io, path)
-                # continue to root recursively
-                if hasattr(context, '_'):
-                    collect(context._, curr_stream)
-        collect(context, stream)
+        prev_stream = stream
+        for c in iter_context_tree(context):
+            curr_stream = getattr(c, '_io', None)
+            if curr_stream is None:
+                break
+
+            # add to offset if stream changed
+            if curr_stream is not prev_stream:
+                offset += stream_tell(curr_stream, path)
+            prev_stream = curr_stream
 
         # the Prefixed type writes the length _after_ building the subcon (which makes sense),
         #  but that also means that the current data will be written at [current offset] + [size of length field],
