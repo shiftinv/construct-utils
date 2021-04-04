@@ -68,6 +68,7 @@ class Checksum(Subconstruct):
             super()._parse(stream, context, path),
         )
 
+    # TODO: building requires knowledge of the hash beforehand (or building twice and knowing the offsets)
     def _build(self, obj, stream, context, path):
         val = obj.expected if isinstance(obj, ChecksumValue) else obj
         return super()._build(val, stream, context, path)
