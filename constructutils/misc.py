@@ -44,19 +44,14 @@ def seek_temporary(stream: IO, path: str, offset: int):
 def iter_context_tree(context: Container) -> Iterator[Container]:
     yield context
 
-    # try to get `_root` attribute (only exists in containers)
-    parent = getattr(context, '_root', context)
-    if parent is not context:
-        yield parent
-
     # walk up the tree until no new parent (`_`) exists
     while True:
-        next_parent = getattr(parent, '_', parent)
-        if next_parent is parent:  # either no `_` attribute, or self-reference
+        next_parent = getattr(context, '_', context)
+        if next_parent is context:  # either no `_` attribute, or self-reference
             break
-        parent = next_parent
-        yield parent
-    return parent
+        context = next_parent
+        yield context
+    return context
 
 
 def get_root_context(context: Container) -> Container:

@@ -40,20 +40,20 @@ def __get_test_tree():
     c4 = Container()
     c3 = Container(_=c4, _io=object())
     c2 = Container(_=c3)
-    c1 = Container(_root=c2, _io=object())
+    c1 = Container(_=c2, _io=object(), _root=c4)
     return c1
 
 
 def test_iter_context_tree():
     t = __get_test_tree()
-    assert list(iter_context_tree(t)) == [t, t._root, t._root._, t._root._._]
+    assert list(iter_context_tree(t)) == [t, t._, t._._, t._._._]
 
 
 def test_get_root_context():
     t = __get_test_tree()
-    assert get_root_context(t) == t._root._._
+    assert get_root_context(t) == t._._._
 
 
 def test_get_root_stream():
     t = __get_test_tree()
-    assert get_root_stream(t) == t._root._._io
+    assert get_root_stream(t) == t._._._io
