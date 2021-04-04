@@ -10,17 +10,7 @@ from .misc import seek_temporary, iter_context_tree, get_root_context, get_root_
 
 
 class DeferredError(ConstructError):
-    path: Optional[str]
-
-    def __init__(self, message: str, path: Optional[str] = None):
-        super().__init__(message, path)
-        self.path = path
-
-    def __str__(self):
-        s = super().__str__()
-        if self.path:
-            s += f' [path: {self.path}]'
-        return s
+    pass
 
 
 def _get_deferred_list(context) -> List['DeferredMeta']:
