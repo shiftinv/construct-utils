@@ -21,7 +21,7 @@ class DeferredMetaBase:
     Internal container class for keeping track of metadata for deferred fields
 
     Attributes:
-        path (str): Parsing/Building path of corresponding instance
+        path (str): Parsing/Building path of associated instance
     '''
 
     path: str
@@ -29,7 +29,14 @@ class DeferredMetaBase:
 
 @dataclass
 class DeferredParseMeta(DeferredMetaBase):
-    pass
+    '''
+    Internal container class for keeping track of metadata for deferred fields while parsing
+
+    Attributes:
+        value (Any): Parsed value of associated instance
+    '''
+
+    value: Any
 
 
 @dataclass
@@ -38,7 +45,7 @@ class DeferredBuildMeta(DeferredMetaBase):
     Internal container class for keeping track of metadata for deferred fields while building
 
     Attributes:
-        subcon (Subconstruct): Subconstruct of corresponding :class:`DeferredValue` instance
+        subcon (Subconstruct): Subconstruct of associated :class:`DeferredValue` instance
         target_offset (int): Target offset in outermost stream
         placeholder_data (bytes): Temporary placeholder bytes, used for sanity checks
         new_value (Any, optional): Final written value, only valid if :attr:`new_value_written` is True
@@ -96,7 +103,7 @@ class DeferredValueBase(ABC, Generic[_TMetaParse, _TMetaBuild], Subconstruct):
         value = super()._parse(stream, context, path)
         # create meta object, but return parsed value
         # doesn't do anything on its own in this case, but can be extended by subclasses
-        self._create_global_meta(context, path)
+        self._create_global_meta(context, path, value)
         return value
 
     def _build(self, obj, stream, context, path):
@@ -158,19 +165,19 @@ class DeferredValue(DeferredValueBase[DeferredParseMeta, DeferredBuildMeta]):
 class WriteDeferredValue(Construct):
     '''
     Writes a provided value (or value of a provided expression) in place of
-    a :class:`DeferredValue` at a given :attr:`path`
+    a :class:`DeferredValue` at a given path
     '''
 
-    def __init__(self, expr: Any, path: Path):
+    def __init__(self, expr: Any, meta: Union[Path, DeferredBuildMeta]):
         super().__init__()
         self.expr = expr
-        self.path = path
+        self.meta = meta
 
         self.flagbuildnone = True
 
     def _build(self, obj, stream, context, path):
         # evaluate path to `DeferredBuildMeta` instance in context
-        deferred = evaluate(self.path, context)
+        deferred = evaluate(self.meta, context)
         if not isinstance(deferred, DeferredBuildMeta):
             raise DeferredError('value is not an instance of DeferredBuildMeta', path=path)
         new_value = evaluate(self.expr, context)

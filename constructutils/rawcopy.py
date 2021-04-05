@@ -49,7 +49,13 @@ class AttributeRawCopy(NoEmitMixin, RawCopy):
 
     def _parse(self, stream, context, path):
         rc = super()._parse(stream, context, path)
+        return self.__process_rawcopy(rc, path)
 
+    def _build(self, obj, stream, context, path):
+        rc = super()._build({'value': obj}, stream, context, path)
+        return self.__process_rawcopy(rc, path)
+
+    def __process_rawcopy(self, rc, path):
         # store raw bytes in parsed data
         if hasattr(rc.value, self.__raw_key):
             raise RawCopyError(f'context already has a \'{self.__raw_key}\' attribute', path=path)
@@ -57,9 +63,6 @@ class AttributeRawCopy(NoEmitMixin, RawCopy):
 
         # return parsed data only
         return rc.value
-
-    def _build(self, obj, stream, context, path):
-        return super()._build({'value': obj}, stream, context, path)
 
     def __rmatmul__(self, name):
         return type(self)(self.subcon, name)
