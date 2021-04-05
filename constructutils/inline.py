@@ -39,17 +39,8 @@ class InliningStruct(NoEmitMixin, Struct):
         # look for InlineStruct subcons, traverse Subconstruct instances
         self.__inline = []
         for s in self.subcons:
-            _s = s
-            while True:
-                if isinstance(_s, InlineStruct):
-                    # found
-                    self.__inline.append(s)
-                    break
-                if not isinstance(_s, Subconstruct):
-                    # not a Subconstruct
-                    break
-                # step
-                _s = _s.subcon
+            if InlineStruct._is_inline(s):
+                self.__inline.append(s)
 
         # prevent collisions between nested instances with global counter/tag
         cls = type(self)
@@ -121,3 +112,21 @@ class InlineStruct(InliningStruct):
     def __check_inline(cls, context, path):
         if not context._.get('_is_inline', False):
             raise InlineError(f'`{cls.__name__}`s may only be part of `InliningStruct`s', path=path)
+
+    @staticmethod
+    def _is_inline(construct) -> bool:
+        '''
+        Returns True if the provided construct or any of its
+        subconstructs (recursively, where applicable) is a :class:`InlineStruct`
+        '''
+        _c = construct
+        while True:
+            if isinstance(_c, InlineStruct):
+                # found
+                return True
+            if not isinstance(_c, Subconstruct):
+                # not a subconstruct
+                break
+            # step
+            _c = _c.subcon
+        return False

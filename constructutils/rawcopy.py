@@ -64,7 +64,7 @@ class AttributeRawCopy(NoEmitMixin, RawCopy):
         object.__setattr__(rc.value, self.__raw_key, rc_bytes)
 
         # special case for handling `InlineStruct`s
-        if isinstance(self.subcon, InlineStruct):
+        if InlineStruct._is_inline(self.subcon):
             setattr(context, self.__raw_key, rc_bytes)
 
         # return parsed data only
