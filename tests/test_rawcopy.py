@@ -1,7 +1,9 @@
 import pytest
-from construct import Struct, Array, Byte
+from construct import Struct, Array, Byte, Computed, this
 
-from constructutils import RawCopyError, AttributeRawCopy
+from constructutils import \
+    RawCopyError, AttributeRawCopy, \
+    InliningStruct, InlineStruct
 
 
 def test_parse():
@@ -51,3 +53,17 @@ def test_duplicate():
     )
     with pytest.raises(RawCopyError):
         s.parse(b'0')
+
+
+def test_inline():
+    s = InliningStruct(
+        'raw' @ AttributeRawCopy(InlineStruct(
+            'a' / Byte
+        )),
+        # make sure `this.raw` is accessible from inside the `InliningStruct` while it's still parsing/building
+        'b' / Computed(this.raw)
+    )
+
+    assert s.parse(b'\x01') == {'a': 1, 'b': b'\x01'}
+
+    assert s.build({'a': 1}) == b'\x01'

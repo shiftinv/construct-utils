@@ -1,6 +1,7 @@
 from construct import Struct, Array, RawCopy, ConstructError
 from typing import Optional, Union
 
+from .inline import InlineStruct
 from .noemit import NoEmitMixin
 
 
@@ -49,17 +50,22 @@ class AttributeRawCopy(NoEmitMixin, RawCopy):
 
     def _parse(self, stream, context, path):
         rc = super()._parse(stream, context, path)
-        return self.__process_rawcopy(rc, path)
+        return self.__process_rawcopy(rc, context, path)
 
     def _build(self, obj, stream, context, path):
         rc = super()._build({'value': obj}, stream, context, path)
-        return self.__process_rawcopy(rc, path)
+        return self.__process_rawcopy(rc, context, path)
 
-    def __process_rawcopy(self, rc, path):
+    def __process_rawcopy(self, rc, context, path):
         # store raw bytes in parsed data
         if hasattr(rc.value, self.__raw_key):
             raise RawCopyError(f'context already has a \'{self.__raw_key}\' attribute', path=path)
-        object.__setattr__(rc.value, self.__raw_key, RawCopyBytes(rc.data))
+        rc_bytes = RawCopyBytes(rc.data)
+        object.__setattr__(rc.value, self.__raw_key, rc_bytes)
+
+        # special case for handling `InlineStruct`s
+        if isinstance(self.subcon, InlineStruct):
+            setattr(context, self.__raw_key, rc_bytes)
 
         # return parsed data only
         return rc.value
