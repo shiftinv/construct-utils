@@ -127,3 +127,18 @@ def get_root_stream(context: Container) -> IO:
         top_io = getattr(c, '_io', top_io)
     assert top_io is not None
     return top_io
+
+
+def context_global(context, name: str, default):
+    '''
+    Returns a context-global value, creating it if it doesn't exist yet
+    '''
+    root = get_root_context(context)
+
+    if hasattr(root, name):
+        val = getattr(root, name)
+    else:
+        val = default
+        setattr(root, name, val)
+
+    return val
