@@ -1,15 +1,17 @@
 import hashlib
 from dataclasses import dataclass
 from construct import \
-    Hex, Bytes, Construct, \
+    Hex, Bytes, Construct, Subconstruct, Container, \
     ConstructError, evaluate, singleton
-from typing import Any, Callable, Type, TypeVar, Union, cast
+from typing import Any, Callable, List, Type, TypeVar, Union, cast
 
 from .deferred import DeferredParseMeta, DeferredBuildMeta, DeferredValueBase, WriteDeferredValue
 from .rawcopy import AttributeRawCopy
 
 
 HashFunc = Callable[[bytes], 'hashlib._Hash']
+DataExprValue = Union[bytes, List[bytes], Container, List[Container]]
+DataExpr = Union[DataExprValue, Callable[[Any], DataExprValue]]
 
 CHECKSUM_RAW_DATA_NAME = '__checksum_raw_data__'
 
@@ -51,7 +53,9 @@ class ChecksumValueMeta:
     '''
 
     hash_func: HashFunc
-    data_expr: Any
+    data_expr: DataExpr
+    data_expr_context: Container
+    data_expr_is_list: bool
 
 
 @dataclass
@@ -99,16 +103,17 @@ class ChecksumValue(DeferredValueBase[ChecksumValueParseMeta, ChecksumValueBuild
         ...     s.parse(hashval[:-1] + b'X' + inner)
     '''
 
-    def __init__(self, hash_func: HashFunc, data_expr: Union[bytes, Callable[[Any], bytes]]):
+    def __init__(self, hash_func: HashFunc, data_expr: DataExpr, data_expr_is_list: bool = False):
         super().__init__(ChecksumRaw(hash_func))
 
         self.hash_func = hash_func
         self.data_expr = data_expr
+        self.data_expr_is_list = data_expr_is_list
 
     def _create_global_meta(self, context, path, *args):
         m = super()._create_global_meta(
             context, path, *args,
-            self.hash_func, self.data_expr
+            self.hash_func, self.data_expr, context, self.data_expr_is_list
         )
         return m
 
@@ -156,14 +161,27 @@ class VerifyOrWriteChecksums(Construct):
     def __iter_values(self, context, path, _: Type[_TMeta]):
         for meta in ChecksumValue._get_instances(context):
             # evaluate data expression
-            data = getattr(evaluate(meta.data_expr, context), CHECKSUM_RAW_DATA_NAME, None)
-            if data is None:
-                raise ChecksumCalcError(
-                    f'data expression for ChecksumValue at \'{meta.path}\' does not contain raw data, make sure to use wrap the target in `ChecksumSourceData`',
-                    path=path
-                )
+            data_container = evaluate(meta.data_expr, meta.data_expr_context)
+            if meta.data_expr_is_list:
+                if type(data_container) != list:  # check type directly instead of `isinstance`, as `ListContainer` inherits from `list`
+                    raise ChecksumCalcError(
+                        f'expected data expression for ChecksumValue at \'{meta.path}\' to be a list, got {type(data_container).__name__}'
+                    )
+                data = b''.join(self.__get_raw_data(v, path, meta.path) for v in data_container)
+            else:
+                data = self.__get_raw_data(data_container, path, meta.path)
 
             # calculate checksum
             hash_value = meta.hash_func(data)  # type: ignore  # https://github.com/python/mypy/issues/5485
 
             yield cast(_TMeta, meta), hash_value.digest()
+
+    @staticmethod
+    def __get_raw_data(value, path, meta_path):
+        try:
+            return value if isinstance(value, bytes) else getattr(value, CHECKSUM_RAW_DATA_NAME)
+        except AttributeError:
+            raise ChecksumCalcError(
+                f'data expression for ChecksumValue at \'{meta_path}\' does not contain raw data, make sure to use wrap the target in `ChecksumSourceData`',
+                path=path
+            )
