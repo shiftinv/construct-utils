@@ -38,6 +38,11 @@ class ChecksumVerifyError(Exception):
         return f'{super().__str__()}\n  expected: {self.expected.hex()}\n  got:      {self.actual.hex()}'
 
 
+class ChecksumRaw(Subconstruct):
+    def __init__(self, hash_func: HashFunc):
+        super().__init__(Hex(Bytes(hash_func(b'').digest_size)))
+
+
 @dataclass
 class ChecksumValueMeta:
     '''
@@ -95,8 +100,7 @@ class ChecksumValue(DeferredValueBase[ChecksumValueParseMeta, ChecksumValueBuild
     '''
 
     def __init__(self, hash_func: HashFunc, data_expr: Union[bytes, Callable[[Any], bytes]]):
-        tmp = hash_func(b'')
-        super().__init__(Hex(Bytes(tmp.digest_size)))
+        super().__init__(ChecksumRaw(hash_func))
 
         self.hash_func = hash_func
         self.data_expr = data_expr
