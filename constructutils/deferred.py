@@ -1,12 +1,13 @@
 import os
-import inspect
 from dataclasses import dataclass
 from construct import \
-    Construct, Subconstruct, Prefixed, ConstructError, SizeofError, Path, \
-    stream_tell, stream_read, stream_write, evaluate, singleton
+    Construct, Subconstruct, ConstructError, SizeofError, Path, \
+    stream_read, stream_write, evaluate, singleton
 from typing import Any, Optional, List
 
-from .misc import seek_temporary, iter_context_tree, get_root_context, get_root_stream
+from .misc import \
+    seek_temporary, get_offset_in_outer_stream, \
+    get_root_context, get_root_stream
 
 
 class DeferredError(ConstructError):
@@ -86,45 +87,13 @@ class DeferredValue(Subconstruct):
             raise DeferredError('couldn\'t determine size of deferred field (must be constant)') from e
         self.flagbuildnone = True  # no value has to be provided for building
 
-    # this is probably not reliable, but required for working around nested BytesIO calls
-    def __get_offset_in_outer_stream(self, stream, context, path):
-        offset = stream_tell(stream, path)
-
-        # collect offsets of enclosing streams by walking up the tree
-        prev_stream = stream
-        for c in iter_context_tree(context):
-            curr_stream = getattr(c, '_io', None)
-            if curr_stream is None:
-                break
-
-            # add to offset if stream changed
-            if curr_stream is not prev_stream:
-                offset += stream_tell(curr_stream, path)
-            prev_stream = curr_stream
-
-        # the Prefixed type writes the length _after_ building the subcon (which makes sense),
-        #  but that also means that the current data will be written at [current offset] + [size of length field],
-        #  which has to be taken into account as the stream's offset doesn't include the length field yet
-        stack = inspect.stack()
-        try:
-            for info in stack:
-                if info.function != '_build':
-                    continue
-                local_self = info.frame.f_locals.get('self')
-                if isinstance(local_self, Prefixed):
-                    offset += local_self.lengthfield.sizeof()
-        finally:
-            del stack  # just to be safe, see https://docs.python.org/3/library/inspect.html#the-interpreter-stack
-
-        return offset
-
     def _build(self, obj, stream, context, path):
         # expect `None`, we're building a placeholder instead of a real value
         if obj is not None:
             raise DeferredError(f'building expected `None`, but got {obj}', path=path)
 
         # calculate current offset in outermost stream
-        target_offset = self.__get_offset_in_outer_stream(stream, context, path)
+        target_offset = get_offset_in_outer_stream(stream, context, path)
 
         # build placeholder value in place of real value
         placeholder_data = os.urandom(self.placeholder_size)

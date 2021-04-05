@@ -1,7 +1,8 @@
+import inspect
 import contextlib
 import collections
 from construct import \
-    Adapter, Container, ListContainer, \
+    Adapter, Container, ListContainer, Prefixed, \
     stream_tell, stream_seek
 from typing import Iterator, Union, List, Tuple, IO
 
@@ -38,6 +39,10 @@ class DictZipAdapter(Adapter):
         return obj.values()
 
 
+#####
+# stream stuff
+#####
+
 @contextlib.contextmanager
 def seek_temporary(stream: IO, path: str, offset: int):
     '''
@@ -49,6 +54,48 @@ def seek_temporary(stream: IO, path: str, offset: int):
     yield
     stream_seek(stream, fallback, 0, path)
 
+
+def get_offset_in_outer_stream(stream, context, path):
+    '''
+    Tries to calculate the current offset in the outermost stream by traversing the context tree.
+
+    This is very likely to go completely wrong in many configurations;
+    right now it takes streams in other contexts and the :class:`Prefixed` type into account.
+    '''
+    offset = stream_tell(stream, path)
+
+    # collect offsets of enclosing streams by walking up the tree
+    prev_stream = stream
+    for c in iter_context_tree(context):
+        curr_stream = getattr(c, '_io', None)
+        if curr_stream is None:
+            break
+
+        # add to offset if stream changed
+        if curr_stream is not prev_stream:
+            offset += stream_tell(curr_stream, path)
+        prev_stream = curr_stream
+
+    # the Prefixed type writes the length _after_ building the subcon (which makes sense),
+    #  but that also means that the current data will be written at [current offset] + [size of length field],
+    #  which has to be taken into account as the stream's offset doesn't include the length field yet
+    stack = inspect.stack()
+    try:
+        for info in stack:
+            if info.function != '_build':
+                continue
+            local_self = info.frame.f_locals.get('self')
+            if isinstance(local_self, Prefixed):
+                offset += local_self.lengthfield.sizeof()
+    finally:
+        del stack  # just to be safe, see https://docs.python.org/3/library/inspect.html#the-interpreter-stack
+
+    return offset
+
+
+#####
+# context stuff
+#####
 
 def iter_context_tree(context: Container) -> Iterator[Container]:
     yield context
