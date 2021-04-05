@@ -1,9 +1,10 @@
 import os
-from dataclasses import dataclass
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from construct import \
     Construct, Subconstruct, ConstructError, SizeofError, Path, \
     stream_read, stream_write, evaluate, singleton
-from typing import Any, Optional, List, Type
+from typing import Any, Generic, Optional, List, Type, TypeVar, Union, cast
 
 from .misc import \
     seek_temporary, get_offset_in_outer_stream, \
@@ -15,13 +16,29 @@ class DeferredError(ConstructError):
 
 
 @dataclass
-class DeferredMeta:
+class DeferredMetaBase:
     '''
     Internal container class for keeping track of metadata for deferred fields
 
     Attributes:
+        path (str): Parsing/Building path of corresponding instance
+    '''
+
+    path: str
+
+
+@dataclass
+class DeferredParseMeta(DeferredMetaBase):
+    pass
+
+
+@dataclass
+class DeferredBuildMeta(DeferredMetaBase):
+    '''
+    Internal container class for keeping track of metadata for deferred fields while building
+
+    Attributes:
         subcon (Subconstruct): Subconstruct of corresponding :class:`DeferredValue` instance
-        path (str): Parsing/Building path of corresponding :class:`DeferredValue` instance
         target_offset (int): Target offset in outermost stream
         placeholder_data (bytes): Temporary placeholder bytes, used for sanity checks
         new_value (Any, optional): Final written value, only valid if :attr:`new_value_written` is True
@@ -29,11 +46,10 @@ class DeferredMeta:
     '''
 
     subcon: Subconstruct
-    path: str
     target_offset: int
     placeholder_data: bytes
-    new_value: Optional[Any] = None
-    new_value_written: bool = False
+    new_value: Optional[Any] = field(default=None, init=False)
+    new_value_written: bool = field(default=False, init=False)
 
     def _build_value(self, obj, stream, context, path):
         '''
@@ -55,7 +71,11 @@ class DeferredMeta:
             raise DeferredError(f'something went wrong, data at target location ({read_data.hex()}) does not equal expected placeholder data ({self.placeholder_data.hex()})', path=path)
 
 
-class DeferredValue(Subconstruct):
+_TMetaParse = TypeVar('_TMetaParse', bound=DeferredParseMeta)
+_TMetaBuild = TypeVar('_TMetaBuild', bound=DeferredBuildMeta)
+
+
+class DeferredValueBase(ABC, Generic[_TMetaParse, _TMetaBuild], Subconstruct):
     '''
     Subconstruct allowing for deferred writing of values in seekable streams.
 
@@ -63,16 +83,21 @@ class DeferredValue(Subconstruct):
     which should later be updated/finalized using :class:`WriteDeferredValue`.
     '''
 
-    def __init__(self, subcon, meta_type: Type[DeferredMeta] = DeferredMeta):
+    def __init__(self, subcon):
         super().__init__(subcon)
         self.flagbuildnone = True  # no value has to be provided for building
-
-        self.meta_type = meta_type
 
         try:
             self.placeholder_size = subcon.sizeof()
         except SizeofError as e:
             raise DeferredError('couldn\'t determine size of deferred field (must be constant)') from e
+
+    def _parse(self, stream, context, path):
+        value = super()._parse(stream, context, path)
+        # create meta object, but return parsed value
+        # doesn't do anything on its own in this case, but can be extended by subclasses
+        self._create_global_meta(context, path)
+        return value
 
     def _build(self, obj, stream, context, path):
         # expect `None`, we're building a placeholder instead of a real value
@@ -86,14 +111,48 @@ class DeferredValue(Subconstruct):
         placeholder_data = os.urandom(self.placeholder_size)
         stream_write(stream, placeholder_data, len(placeholder_data), path)
 
-        # create and return `DeferredMeta` object, which is later used by `WriteDeferredValue`
-        meta = self.meta_type(self.subcon, path, target_offset, placeholder_data)
-        self._get_instances(context).append(meta)
+        # create and return meta object, which can later be used by `WriteDeferredValue`
+        return self._create_global_meta(context, path, self.subcon, target_offset, placeholder_data)
+
+    @classmethod
+    def _get_instances(cls, context) -> Union[List[_TMetaParse], List[_TMetaBuild]]:
+        '''
+        Returns context-global list of metadata instances
+        '''
+        return context_global(context, cls._get_meta_name(), [])
+
+    def _create_global_meta(self, context, path, *args) -> Union[_TMetaParse, _TMetaBuild]:
+        '''
+        Creates a new metadata instance with the provided parameters and adds it to the global list
+        '''
+        meta_type = self._get_meta_type(context._building)
+        meta = meta_type(path, *args)
+
+        global_list = cast(List[DeferredMetaBase], self._get_instances(context))
+        global_list.append(meta)
         return meta
 
+    def _get_meta_type(self, is_building: bool) -> Type[Union[_TMetaParse, _TMetaBuild]]:
+        '''
+        Returns the correct generic metadata parameter type for building/parsing
+        '''
+        bases = type(self).__orig_bases__
+        args = next(b.__args__ for b in bases if b.__origin__ is DeferredValueBase)
+        return args[1] if is_building else args[0]
+
     @staticmethod
-    def _get_instances(context) -> List[DeferredMeta]:
-        return context_global(context, '_deferred_meta', [])
+    @abstractmethod
+    def _get_meta_name() -> str:
+        '''
+        Returns the name of the context-global list of metadata instances
+        '''
+        pass
+
+
+class DeferredValue(DeferredValueBase[DeferredParseMeta, DeferredBuildMeta]):
+    @staticmethod
+    def _get_meta_name() -> str:
+        return '_deferred_meta'
 
 
 class WriteDeferredValue(Construct):
@@ -110,10 +169,10 @@ class WriteDeferredValue(Construct):
         self.flagbuildnone = True
 
     def _build(self, obj, stream, context, path):
-        # evaluate path to `DeferredMeta` instance in context
+        # evaluate path to `DeferredBuildMeta` instance in context
         deferred = evaluate(self.path, context)
-        if not isinstance(deferred, DeferredMeta):
-            raise DeferredError('value is not an instance of DeferredMeta', path=path)
+        if not isinstance(deferred, DeferredBuildMeta):
+            raise DeferredError('value is not an instance of DeferredBuildMeta', path=path)
         new_value = evaluate(self.expr, context)
 
         # use outer stream for writing
@@ -146,7 +205,7 @@ class CheckDeferredValues(Construct):
         pass
 
     def _build(self, obj, stream, context, path):
-        for meta in DeferredValue._get_instances(context):
+        for meta in cast(List[DeferredBuildMeta], DeferredValue._get_instances(context)):
             if not meta.new_value_written:
                 raise DeferredError(f'deferred value at \'{meta.path}\' was never written', path=path)
 

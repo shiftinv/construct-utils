@@ -9,6 +9,7 @@ exclude_lines =
     def __str__
 
     @overload
+    @abstractmethod
 
     raise AssertionError
     raise NotImplementedError
