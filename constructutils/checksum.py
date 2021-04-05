@@ -40,9 +40,26 @@ class ChecksumVerifyError(Exception):
         return f'{super().__str__()}\n  expected: {self.expected.hex()}\n  got:      {self.actual.hex()}'
 
 
+class ChecksumRawValue(bytes):
+    hash_name: str
+    verified: bool = False
+
+
 class ChecksumRaw(Subconstruct):
+    '''
+    Parses and builds bytes based on a `hashlib.*` method;
+    parsed value is a :class:`ChecksumRawValue`, which represents the checksum bytes
+    '''
+
     def __init__(self, hash_func: HashFunc):
-        super().__init__(Hex(Bytes(hash_func(b'').digest_size)))
+        h = hash_func(b'')
+        super().__init__(Hex(Bytes(h.digest_size)))
+        self.hash_name = h.name
+
+    def _parse(self, stream, context, path):
+        v = ChecksumRawValue(super()._parse(stream, context, path))
+        v.hash_name = self.hash_name
+        return v
 
 
 @dataclass
@@ -149,6 +166,8 @@ class VerifyOrWriteChecksums(Construct):
             # compare read/expected value with calculated value
             if meta.value != hash_value:
                 raise ChecksumVerifyError(f'hash mismatch for path \'{meta.path}\'', meta.value, hash_value)
+            else:
+                meta.value.verified = True
 
     def _build(self, obj, stream, context, path):
         for meta, hash_value in self.__iter_values(context, path, ChecksumValueBuildMeta):
