@@ -1,5 +1,6 @@
 from .checksum import \
-    ChecksumError, ChecksumValue, Checksum
+    ChecksumCalcError, ChecksumVerifyError, \
+    ChecksumValue, ChecksumSourceData, VerifyOrWriteChecksums
 from .deferred import \
     DeferredError, DeferredValue, WriteDeferredValue, CheckDeferredValues
 from .inline import \

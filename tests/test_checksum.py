@@ -1,38 +1,51 @@
 import pytest
 import hashlib
+from construct import Struct, Bytes, this
 
-from constructutils import Checksum, ChecksumValue, ChecksumError
-
-
-def test_size():
-    assert Checksum(hashlib.sha1).sizeof() == 20
-    assert Checksum(hashlib.sha256).sizeof() == 32
+from constructutils import \
+    ChecksumCalcError, ChecksumVerifyError, \
+    ChecksumValue, ChecksumSourceData, VerifyOrWriteChecksums
 
 
-def test_parse():
-    c = Checksum(hashlib.sha1)
-    v = bytes(range(20))
-    assert c.parse(v).expected == v
+test_struct = Struct(
+    'hash' / ChecksumValue(hashlib.sha1, this.data),
+    'data' / ChecksumSourceData(Struct(
+        'x' / Bytes(4)
+    )),
+    VerifyOrWriteChecksums
+)
+test_data = hashlib.sha1(b'test').digest() + b'test'
+
+
+def test_parse_valid():
+    assert test_struct.parse(test_data) == {
+        'hash': test_data[:-4],
+        'data': {'x': b'test'}
+    }
+
+
+def test_parse_invalid():
+    mod_data = bytearray(test_data)
+    mod_data[0] = (mod_data[0] + 1) & 0xff
+
+    with pytest.raises(ChecksumVerifyError) as e:
+        test_struct.parse(mod_data)
+    assert e.value.expected == mod_data[:-4]
+    assert e.value.actual == test_data[:-4]
 
 
 def test_build():
-    c = Checksum(hashlib.sha1)
-    v = bytes(range(20))
-    assert c.build(v) == v
-    assert c.build(ChecksumValue(v, hashlib.sha1, 'sha1')) == v
+    assert test_struct.build({'data': {'x': b'test'}}) == test_data
 
 
-def test_verify():
-    data = b'test'
-    digest = hashlib.sha1(data).digest()
-    cv = ChecksumValue(digest, hashlib.sha1, 'sha1')
+def test_no_sourcedata():
+    s = Struct(
+        'hash' / ChecksumValue(hashlib.sha1, this.data),
+        'data' / Struct(
+            'x' / Bytes(4)
+        ),
+        VerifyOrWriteChecksums
+    )
 
-    # valid data, make sure no exception is raised
-    cv.verify(data)
-
-    # invalid data
-    data2 = data + b'x'
-    with pytest.raises(ChecksumError) as e:
-        cv.verify(data2)
-    assert e.value.expected == digest
-    assert e.value.actual == hashlib.sha1(data2).digest()
+    with pytest.raises(ChecksumCalcError):
+        s.parse(test_data)
