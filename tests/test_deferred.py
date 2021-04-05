@@ -129,6 +129,17 @@ def test_build_invalid_target():
         s.build({'a': 0xff})
 
 
+def test_write_twice():
+    s = Struct(
+        'a' / DeferredValue(Byte),
+        WriteDeferredValue(0x41, this.a),
+        WriteDeferredValue(0x42, this.a)
+    )
+
+    with pytest.raises(DeferredError):
+        s.build({})
+
+
 def test_check_deferred():
     s = Struct(
         'a' / DeferredValue(Byte),
