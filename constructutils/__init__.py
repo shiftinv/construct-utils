@@ -4,9 +4,9 @@ from .checksum import \
 from .deferred import \
     DeferredError, DeferredValue, WriteDeferredValue, CheckDeferredValues
 from .inline import \
-    InlineError, InliningStruct, InlineStruct
+    InlineError, InliningStruct, Inline, InlineStruct
 from .misc import \
-    DictZipAdapter
+    DictZipAdapter, SwitchNoDefault
 from .noemit import \
     NoEmitMixin
 from .rawcopy import \

@@ -1,8 +1,8 @@
 from typing import List, Tuple
 import pytest
-from construct import Byte, Struct, Construct
+from construct import Byte, Struct, Construct, Padded
 
-from constructutils import InlineError, InliningStruct, InlineStruct
+from constructutils import InlineError, InliningStruct, Inline, InlineStruct
 
 
 data: List[Tuple[Construct, dict, bytes]] = [
@@ -41,6 +41,18 @@ def test_parse(data, struct, expected):
 @pytest.mark.parametrize('struct, value, expected', data)
 def test_build(value, struct, expected):
     assert struct.build(value) == expected
+
+
+def test_inline_simple():
+    s = InliningStruct(
+        'a' / Byte,
+        Inline(Padded(2, Struct(
+            'b' / Byte
+        ))),
+        'c' / Byte
+    )
+    assert s.parse(b'\x01\x02\x03\x04') == {'a': 1, 'b': 2, 'c': 4}
+    assert s.build({'a': 1, 'b': 2, 'c': 3}) == b'\x01\x02\x00\x03'
 
 
 def test_duplicate():

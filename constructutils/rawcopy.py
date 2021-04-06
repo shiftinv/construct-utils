@@ -1,7 +1,7 @@
 from construct import Struct, Array, RawCopy, ConstructError
 from typing import Optional, Union
 
-from .inline import InlineStruct
+from .inline import _InlineMixin
 from .noemit import NoEmitMixin
 
 
@@ -21,7 +21,7 @@ class AttributeRawCopy(NoEmitMixin, RawCopy):
     Similar to :class:`RawCopy`, but instead of returning a dict `{'data': [bytes], 'value': [Any]}`
     it assigns the raw `data` to a property of `value` (`__raw__` by default, can be changed with `@` or using the parameters).
 
-    Especially useful in combination with :class:`inline.InlineStruct`.
+    Especially useful in combination with :class:`inline.Inline`/:class:`inline.InlineStruct`.
 
     Examples:
         >>> s = InliningStruct(
@@ -64,7 +64,7 @@ class AttributeRawCopy(NoEmitMixin, RawCopy):
         object.__setattr__(rc.value, self.__raw_key, rc_bytes)
 
         # special case for handling `InlineStruct`s
-        if InlineStruct._is_inline(self.subcon):
+        if _InlineMixin._is_inline(self.subcon):
             setattr(context, self.__raw_key, rc_bytes)
 
         # return parsed data only

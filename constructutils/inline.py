@@ -10,13 +10,13 @@ class InlineError(ConstructError):
 class InliningStruct(NoEmitMixin, Struct):
     '''
     Similar to a standard :class:`Struct`,
-    but inlines properties of :class:`InlineStruct` descendants into itself
-    (i.e. flattens nested :class:`InlineStruct` instances).
+    but inlines properties of :class:`Inline`/:class:`InlineStruct` descendants into itself
+    (i.e. flattens nested instances).
 
     This is mainly useful for wrapping :class:`Struct`s in context-modifying subconstructs
     that pass through the resulting value.
 
-    Does not have any use on its own, only in conjunction with :class:`InlineStruct`s.
+    Does not have any use on its own, only in conjunction with :class:`Inline`/:class:`InlineStruct` instances.
 
     Examples:
         >>> s = InliningStruct(
@@ -36,10 +36,10 @@ class InliningStruct(NoEmitMixin, Struct):
     def __init__(self, *subcons, **subconskw):
         super().__init__(*subcons, **subconskw)
 
-        # look for InlineStruct subcons, traverse Subconstruct instances
+        # look for _InlineMixin subcons, traverse Subconstruct instances
         self.__inline = []
         for s in self.subcons:
-            if InlineStruct._is_inline(s):
+            if _InlineMixin._is_inline(s):
                 self.__inline.append(s)
 
         # prevent collisions between nested instances with global counter/tag
@@ -86,12 +86,9 @@ class InliningStruct(NoEmitMixin, Struct):
         return subcontext
 
 
-class InlineStruct(InliningStruct):
+class _InlineMixin:
     '''
-    Similar to a standard :class:`Struct`,
-    used together with :class:`InliningStruct` for inlining nested properties.
-
-    Also acts as an :class:`InliningStruct` itself to allow for easy nesting.
+    Used within an :class:`InliningStruct` for inlining nested properties.
     '''
 
     def _parse(self, stream, context, path):
@@ -121,7 +118,7 @@ class InlineStruct(InliningStruct):
         '''
         _c = construct
         while True:
-            if isinstance(_c, InlineStruct):
+            if isinstance(_c, _InlineMixin):
                 # found
                 return True
             if not isinstance(_c, Subconstruct):
@@ -130,3 +127,18 @@ class InlineStruct(InliningStruct):
             # step
             _c = _c.subcon
         return False
+
+
+class Inline(_InlineMixin, Subconstruct):
+    '''
+    Used within an :class:`InliningStruct` for inlining nested properties.
+    '''
+
+
+class InlineStruct(_InlineMixin, InliningStruct):
+    '''
+    Similar to a standard :class:`Struct`,
+    used together with :class:`InliningStruct` for inlining nested properties.
+
+    Also acts as an :class:`InliningStruct` itself to allow for easy nesting.
+    '''
