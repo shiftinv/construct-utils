@@ -2,11 +2,13 @@ import io
 import pytest
 import functools
 import collections
-from construct import Array, Byte, Container
+from enum import Enum
+from construct import Struct, Array, Byte, Container, Computed, MappingError
 
 from constructutils import AttributeRawCopy
 from constructutils.misc import \
     DictZipAdapter, \
+    EnumConvert, \
     SwitchKeyError, SwitchNoDefault, \
     seek_temporary, \
     iter_context_tree, get_root_context, get_root_stream
@@ -44,6 +46,35 @@ def test_switchnodefault():
         s_invalid.parse(b'\x01')
     with pytest.raises(SwitchKeyError):
         s_invalid.build(0x01)
+
+
+def test_enumconvert():
+    class TestEnum(Enum):
+        A = 0x42
+
+        @property
+        def prop(self):
+            return 1337
+
+    s = Struct(
+        'e' / EnumConvert(Byte, TestEnum),
+        'v' / Computed(lambda this: this.e.prop)
+    )
+
+    # valid
+    assert s.parse(b'\x42') == {'e': TestEnum.A, 'v': 1337}
+    assert s.build({'e': TestEnum.A}) == b'\x42'
+
+    # invalid
+    with pytest.raises(MappingError):
+        s.parse(b'\x00')
+    with pytest.raises(MappingError):
+        s.build({'e': 0})
+
+
+def test_enumconvert_type():
+    with pytest.raises(MappingError):
+        EnumConvert(Byte, dict)
 
 
 def test_seek_temporary():

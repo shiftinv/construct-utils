@@ -1,10 +1,11 @@
 import inspect
 import contextlib
 import collections
+from enum import Enum
 from construct import \
-    Adapter, Container, ListContainer, Prefixed, Switch, ConstructError, \
+    Adapter, Subconstruct, Container, ListContainer, Prefixed, Switch, ConstructError, MappingError, \
     stream_tell, stream_seek
-from typing import Iterator, Union, List, Tuple, IO
+from typing import Iterator, Union, List, Tuple, IO, Type
 
 from .noemit import NoEmitMixin
 from .rawcopy import RawCopyBytes
@@ -38,6 +39,38 @@ class DictZipAdapter(Adapter):
     def _encode(self, obj: dict, context, path):
         assert isinstance(obj, collections.OrderedDict)
         return obj.values()
+
+
+class EnumConvert(Subconstruct):
+    '''
+    Similar to :class:`construct.Enum`, but more restrictive regarding the input/output types.
+
+    Parsing and building will both return an instance of the provided enum type
+    (cf. :class:`construct.Enum`, where building will return the built subcon value instead of the enum value)
+    '''
+
+    def __init__(self, subcon, enum: Type[Enum]):
+        if not issubclass(enum, Enum):
+            raise MappingError(f'enum parameter must be of type `Enum` (not {type(enum).__name__})')
+        super().__init__(subcon)
+
+        self.enum = enum
+        mapping = [(e, e.value) for e in self.enum]
+        self.encmapping = dict(mapping)
+        self.decmapping = dict((m[1], m[0]) for m in mapping)
+
+    def _parse(self, stream, context, path):
+        obj = super()._parse(stream, context, path)
+        try:
+            return self.decmapping[obj]
+        except KeyError:
+            raise MappingError(f'no `{self.enum.__name__}` mapping for value {obj!r}', path=path)
+
+    def _build(self, obj, stream, context, path):
+        if not isinstance(obj, self.enum):
+            raise MappingError(f'expected `{self.enum.__name__}` value, got {obj!r}', path=path)
+        super()._build(obj.value, stream, context, path)
+        return obj
 
 
 #####

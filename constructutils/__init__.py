@@ -7,6 +7,7 @@ from .inline import \
     InlineError, InliningStruct, Inline, InlineStruct
 from .misc import \
     DictZipAdapter, \
+    EnumConvert, \
     SwitchKeyError, SwitchNoDefault
 from .noemit import \
     NoEmitMixin
