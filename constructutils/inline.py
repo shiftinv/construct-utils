@@ -117,7 +117,7 @@ class InlineStruct(InliningStruct):
     def _is_inline(construct) -> bool:
         '''
         Returns True if the provided construct or any of its
-        subconstructs (recursively, where applicable) is a :class:`InlineStruct`
+        subconstructs (recursively, where applicable) is an :class:`InlineStruct`
         '''
         _c = construct
         while True:

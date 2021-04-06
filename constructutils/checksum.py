@@ -41,8 +41,13 @@ class ChecksumVerifyError(Exception):
 
 
 class ChecksumRawValue(bytes):
-    hash_name: str
+    hash_type: str
     verified: bool = False
+
+    def __new__(cls, *args, hash_type: str, **kwargs):
+        self = super().__new__(cls, *args, **kwargs)
+        self.hash_type = hash_type
+        return self
 
 
 class ChecksumRaw(Subconstruct):
@@ -54,12 +59,10 @@ class ChecksumRaw(Subconstruct):
     def __init__(self, hash_func: HashFunc):
         h = hash_func(b'')
         super().__init__(Hex(Bytes(h.digest_size)))
-        self.hash_name = h.name
+        self.hash_type = h.name
 
     def _parse(self, stream, context, path):
-        v = ChecksumRawValue(super()._parse(stream, context, path))
-        v.hash_name = self.hash_name
-        return v
+        return ChecksumRawValue(super()._parse(stream, context, path), hash_type=self.hash_type)
 
 
 @dataclass
