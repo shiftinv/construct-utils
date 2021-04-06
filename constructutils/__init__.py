@@ -6,7 +6,8 @@ from .deferred import \
 from .inline import \
     InlineError, InliningStruct, Inline, InlineStruct
 from .misc import \
-    DictZipAdapter, SwitchNoDefault
+    DictZipAdapter, \
+    SwitchKeyError, SwitchNoDefault
 from .noemit import \
     NoEmitMixin
 from .rawcopy import \

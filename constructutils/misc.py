@@ -2,10 +2,11 @@ import inspect
 import contextlib
 import collections
 from construct import \
-    Adapter, Container, ListContainer, Prefixed, \
+    Adapter, Container, ListContainer, Prefixed, Switch, ConstructError, \
     stream_tell, stream_seek
 from typing import Iterator, Union, List, Tuple, IO
 
+from .noemit import NoEmitMixin
 from .rawcopy import RawCopyBytes
 
 
@@ -37,6 +38,48 @@ class DictZipAdapter(Adapter):
     def _encode(self, obj: dict, context, path):
         assert isinstance(obj, collections.OrderedDict)
         return obj.values()
+
+
+#####
+# switch stuff
+#####
+
+class SwitchKeyError(ConstructError):
+    pass
+
+
+class _DictNoDefault(dict):
+    def get(self, key, default=None):
+        try:
+            # drop default parameter
+            return self[key]
+        except KeyError:
+            raise SwitchKeyError(f'unknown key for switch: {key!r}')
+
+
+class SwitchNoDefault(NoEmitMixin, Switch):
+    '''
+    Similar to :class:`Switch`, but does not pass successfully if no case matches
+    '''
+
+    # (it's not pretty, but it's the easiest solution without having to copy and modify the code)
+    def __init__(self, keyfunc, cases):
+        # patch case dictionary to drop default parameter
+        super().__init__(keyfunc, _DictNoDefault(cases))
+
+    def _parse(self, stream, context, path):
+        try:
+            return super()._parse(stream, context, path)
+        except SwitchKeyError as e:
+            # re-raise error with path
+            raise SwitchKeyError(e.args[0], path=path)
+
+    def _build(self, obj, stream, context, path):
+        try:
+            return super()._build(obj, stream, context, path)
+        except SwitchKeyError as e:
+            # re-raise error with path
+            raise SwitchKeyError(e.args[0], path=path)
 
 
 #####
