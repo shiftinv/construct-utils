@@ -55,9 +55,7 @@ class EnumConvert(Subconstruct):
         super().__init__(subcon)
 
         self.enum = enum
-        mapping = [(e, e.value) for e in self.enum]
-        self.encmapping = dict(mapping)
-        self.decmapping = dict((m[1], m[0]) for m in mapping)
+        self.decmapping = {e.value: e for e in self.enum}
 
     def _parse(self, stream, context, path):
         obj = super()._parse(stream, context, path)

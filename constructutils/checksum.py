@@ -157,7 +157,9 @@ _TMeta = TypeVar('_TMeta', bound=ChecksumValueMeta)
 @singleton
 class VerifyOrWriteChecksums(Construct):
     '''
-    Verifies (when parsing) or calculates/writes (when building) checksums for :class:`ChecksumValue` instances
+    Verifies (when parsing) or calculates/writes (when building) checksums for :class:`ChecksumValue` instances.
+
+    Checksum verification while parsing can be skipped using `<struct>.parse(<data>, skip_verify_checksums=True)`
     '''
 
     def __init__(self):
@@ -165,6 +167,9 @@ class VerifyOrWriteChecksums(Construct):
         self.flagbuildnone = True
 
     def _parse(self, stream, context, path):
+        if context._params.get('skip_verify_checksums', False):
+            return
+
         for meta, hash_value in self.__iter_values(context, path, ChecksumValueParseMeta):
             # compare read/expected value with calculated value
             if meta.value != hash_value:

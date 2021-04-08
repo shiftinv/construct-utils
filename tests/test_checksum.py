@@ -15,6 +15,7 @@ test_struct = Struct(
     VerifyOrWriteChecksums
 )
 test_data = hashlib.sha1(b'test').digest() + b'test'
+test_data_invalid = b'\x00' + test_data[1:]
 
 
 def test_raw():
@@ -29,12 +30,9 @@ def test_parse_valid():
 
 
 def test_parse_invalid():
-    mod_data = bytearray(test_data)
-    mod_data[0] = (mod_data[0] + 1) & 0xff
-
     with pytest.raises(ChecksumVerifyError) as e:
-        test_struct.parse(mod_data)
-    assert e.value.expected == mod_data[:-4]
+        test_struct.parse(test_data_invalid)
+    assert e.value.expected == test_data_invalid[:-4]
     assert e.value.actual == test_data[:-4]
 
 
@@ -87,3 +85,8 @@ def test_list_invalid():
 
     with pytest.raises(ChecksumCalcError):
         s.parse(test_data)
+
+
+def test_skip():
+    # no exception should be raised even though the checksum doesn't match
+    test_struct.parse(test_data_invalid, skip_verify_checksums=True)
