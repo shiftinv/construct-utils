@@ -1,4 +1,5 @@
 from construct import Struct, Subconstruct, ConstructError
+from construct.core import Construct
 
 from .noemit import NoEmitMixin
 
@@ -93,14 +94,14 @@ class _InlineMixin:
 
     def _parse(self, stream, context, path):
         self.__check_inline(context, path)
-        obj = super()._parse(stream, context, path)
+        obj = super()._parse(stream, context, path)  # type: ignore
         # insert parsed data into outer context
         context.update(obj)
         return obj
 
     def _build(self, obj, stream, context, path):
         self.__check_inline(context, path)
-        subcontext = super()._build(obj, stream, context, path)
+        subcontext = super()._build(obj, stream, context, path)  # type: ignore
         # insert built data into outer context
         context.update(subcontext)
         return subcontext
@@ -111,7 +112,7 @@ class _InlineMixin:
             raise InlineError(f'`{cls.__name__}`s may only be part of `InliningStruct`s', path=path)
 
     @staticmethod
-    def _is_inline(construct) -> bool:
+    def _is_inline(construct: Construct) -> bool:
         '''
         Returns True if the provided construct or any of its
         subconstructs (recursively, where applicable) is an :class:`InlineStruct`

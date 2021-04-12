@@ -1,11 +1,11 @@
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
 import pytest
 from construct import Byte, Struct, Construct, Padded
 
 from constructutils import InlineError, InliningStruct, Inline, InlineStruct
 
 
-data: List[Tuple[Construct, dict, bytes]] = [
+data: List[Tuple[Construct, Dict[str, Any], bytes]] = [
     (
         InliningStruct(
             'a' / Byte

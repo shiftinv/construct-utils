@@ -74,7 +74,7 @@ def test_enumconvert():
 
 def test_enumconvert_type():
     with pytest.raises(MappingError):
-        EnumConvert(Byte, dict)
+        EnumConvert(Byte, dict)  # type: ignore
 
 
 def test_seek_temporary():

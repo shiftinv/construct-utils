@@ -5,7 +5,9 @@ from enum import Enum
 from construct import \
     Adapter, Subconstruct, Container, ListContainer, Prefixed, Switch, ConstructError, MappingError, \
     stream_tell, stream_seek
-from typing import Iterator, Union, List, Tuple, IO, Type
+from typing import Any, Dict, Iterator, TypeVar, Union, List, Tuple, IO, Type, OrderedDict
+
+from construct.core import Construct
 
 from .noemit import NoEmitMixin
 from .rawcopy import RawCopyBytes
@@ -19,11 +21,11 @@ class DictZipAdapter(Adapter):
     build input must be an :class:`OrderedDict`.
     '''
 
-    def __init__(self, keys: Union[List, Tuple], subcon):
+    def __init__(self, keys: Union[List[str], Tuple[str, ...]], subcon: Construct):
         super().__init__(subcon)
         self.keys = keys
 
-    def _decode(self, obj: ListContainer, context, path):
+    def _decode(self, obj: ListContainer, context: Container, path: str) -> Container:
         assert isinstance(obj, ListContainer)
 
         assert len(self.keys) == len(obj)
@@ -36,9 +38,11 @@ class DictZipAdapter(Adapter):
 
         return container
 
-    def _encode(self, obj: dict, context, path):
+    def _encode(self, obj: OrderedDict[str, Any], context: Container, path: str) -> List[Any]:
         assert isinstance(obj, collections.OrderedDict)
-        return obj.values()
+        values = list(obj.values())
+        assert len(self.keys) == len(values)
+        return values
 
 
 class EnumConvert(Subconstruct):
@@ -49,7 +53,7 @@ class EnumConvert(Subconstruct):
     (cf. :class:`construct.Enum`, where building will return the built subcon value instead of the enum value)
     '''
 
-    def __init__(self, subcon, enum: Type[Enum]):
+    def __init__(self, subcon: Construct, enum: Type[Enum]):
         if not issubclass(enum, Enum):
             raise MappingError(f'enum parameter must be of type `Enum` (not {type(enum).__name__})')
         super().__init__(subcon)
@@ -79,7 +83,7 @@ class SwitchKeyError(ConstructError):
     pass
 
 
-class _DictNoDefault(dict):
+class _DictNoDefault(Dict[Any, Any]):
     def get(self, key, default=None):
         try:
             # drop default parameter
@@ -118,7 +122,7 @@ class SwitchNoDefault(NoEmitMixin, Switch):
 #####
 
 @contextlib.contextmanager
-def seek_temporary(stream: IO, path: str, offset: int):
+def seek_temporary(stream: IO[Any], path: str, offset: int) -> Iterator[None]:
     '''
     Context manager which seeks to the specified offset on entering,
     and seeks back to the original offset on exit
@@ -192,7 +196,7 @@ def get_root_context(context: Container) -> Container:
     return root
 
 
-def get_root_stream(context: Container) -> IO:
+def get_root_stream(context: Container) -> IO[Any]:
     '''
     Returns the outermost IO/stream relative to a provided context
     '''
@@ -203,7 +207,10 @@ def get_root_stream(context: Container) -> IO:
     return top_io
 
 
-def context_global(context, name: str, default):
+_TGlobal = TypeVar('_TGlobal')
+
+
+def context_global(context: Container, name: str, default: _TGlobal) -> _TGlobal:
     '''
     Returns a context-global value, creating it if it doesn't exist yet
     '''

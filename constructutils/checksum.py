@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from construct import \
     Hex, Bytes, Construct, Subconstruct, Container, \
     ConstructError, evaluate, singleton
-from typing import Any, Callable, List, Type, TypeVar, Union, cast
+from typing import Any, Callable, Iterator, List, Tuple, Type, TypeVar, Union, cast
 
 from .deferred import DeferredParseMeta, DeferredBuildMeta, DeferredValueBase, WriteDeferredValue
 from .rawcopy import AttributeRawCopy
@@ -31,7 +31,7 @@ class ChecksumVerifyError(Exception):
     expected: bytes
     actual: bytes
 
-    def __init__(self, message: str, expected: bytes, actual: bytes, *args):
+    def __init__(self, message: str, expected: bytes, actual: bytes, *args: Any):
         super().__init__(message, expected, actual, *args)
         self.expected = expected
         self.actual = actual
@@ -44,7 +44,7 @@ class ChecksumRawValue(bytes):
     hash_type: str
     verified: bool = False
 
-    def __new__(cls, *args, hash_type: str, **kwargs):
+    def __new__(cls, *args: Any, hash_type: str, **kwargs: Any) -> 'ChecksumRawValue':
         self = super().__new__(cls, *args, **kwargs)
         self.hash_type = hash_type
         return self
@@ -185,7 +185,7 @@ class VerifyOrWriteChecksums(Construct):
     def _sizeof(self, context, path):
         return 0
 
-    def __iter_values(self, context, path, _: Type[_TMeta]):
+    def __iter_values(self, context: Container, path: str, _: Type[_TMeta]) -> Iterator[Tuple[_TMeta, bytes]]:
         for meta in ChecksumValue._get_instances(context):
             # evaluate data expression
             data_container = evaluate(meta.data_expr, meta.data_expr_context)

@@ -2,7 +2,7 @@ import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from construct import \
-    Construct, Subconstruct, ConstructError, SizeofError, Path, \
+    Construct, Subconstruct, ConstructError, SizeofError, Path, Container, \
     stream_read, stream_write, evaluate, singleton
 from typing import Any, Generic, Optional, List, Type, TypeVar, Union, cast
 
@@ -122,13 +122,13 @@ class DeferredValueBase(ABC, Generic[_TMetaParse, _TMetaBuild], Subconstruct):
         return self._create_global_meta(context, path, self.subcon, target_offset, placeholder_data)
 
     @classmethod
-    def _get_instances(cls, context) -> Union[List[_TMetaParse], List[_TMetaBuild]]:
+    def _get_instances(cls, context: Container) -> Union[List[_TMetaParse], List[_TMetaBuild]]:
         '''
         Returns context-global list of metadata instances
         '''
-        return context_global(context, cls._get_meta_name(), [])
+        return context_global(context, cls._get_meta_name(), cast(Any, []))
 
-    def _create_global_meta(self, context, path, *args) -> Union[_TMetaParse, _TMetaBuild]:
+    def _create_global_meta(self, context: Container, path: str, *args: Any) -> Union[_TMetaParse, _TMetaBuild]:
         '''
         Creates a new metadata instance with the provided parameters and adds it to the global list
         '''

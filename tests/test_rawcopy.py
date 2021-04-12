@@ -23,7 +23,7 @@ def test_parse():
         assert getattr(value.array, '__raw__' if name is None else name) == b'\x01\x02\x03'
 
 
-def test_parse_struct():
+def test_parse_construct():
     s = '__raw__' @ AttributeRawCopy(Struct('a' / Byte))
 
     value = s.parse(b'\xff')
