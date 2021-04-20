@@ -9,6 +9,7 @@ from constructutils import AttributeRawCopy
 from constructutils.misc import \
     DictZipAdapter, \
     EnumConvert, \
+    StrictGreedyRange, \
     SwitchKeyError, SwitchNoDefault, \
     seek_temporary, \
     iter_context_tree, get_root_context, get_root_stream
@@ -32,20 +33,6 @@ def test_dictzipadapter_rawcopy():
 
     assert value == {'a': 1, 'b': 2}
     assert value.__raw__ == b'\x01\x02'
-
-
-def test_switchnodefault():
-    get_s = functools.partial(SwitchNoDefault, cases={0: Byte})
-
-    s_valid = get_s(0)
-    assert s_valid.parse(b'\x01') == 0x01
-    assert s_valid.build(0x01) == b'\x01'
-
-    s_invalid = get_s(1)
-    with pytest.raises(SwitchKeyError):
-        s_invalid.parse(b'\x01')
-    with pytest.raises(SwitchKeyError):
-        s_invalid.build(0x01)
 
 
 def test_enumconvert():
@@ -75,6 +62,35 @@ def test_enumconvert():
 def test_enumconvert_type():
     with pytest.raises(MappingError):
         EnumConvert(Byte, dict)  # type: ignore
+
+
+def test_strictgreedyrange():
+    s = StrictGreedyRange(Byte)
+    assert s.parse(b'\x01\x02') == [1, 2]
+
+
+def test_strictgreedyrange_exception():
+    s = StrictGreedyRange(Struct(
+        'x' / Byte,
+        'y' / Computed(lambda _: 1 / 0)
+    ))
+
+    with pytest.raises(ZeroDivisionError):
+        s.parse(b'\x01')
+
+
+def test_switchnodefault():
+    get_s = functools.partial(SwitchNoDefault, cases={0: Byte})
+
+    s_valid = get_s(0)
+    assert s_valid.parse(b'\x01') == 0x01
+    assert s_valid.build(0x01) == b'\x01'
+
+    s_invalid = get_s(1)
+    with pytest.raises(SwitchKeyError):
+        s_invalid.parse(b'\x01')
+    with pytest.raises(SwitchKeyError):
+        s_invalid.build(0x01)
 
 
 def test_seek_temporary():

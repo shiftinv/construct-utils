@@ -8,6 +8,7 @@ from .inline import \
 from .misc import \
     DictZipAdapter, \
     EnumConvert, \
+    StrictGreedyRange, \
     SwitchKeyError, SwitchNoDefault
 from .noemit import \
     NoEmitMixin

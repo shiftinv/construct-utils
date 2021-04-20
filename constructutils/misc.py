@@ -3,11 +3,10 @@ import contextlib
 import collections
 from enum import Enum
 from construct import \
-    Adapter, Subconstruct, Container, ListContainer, Prefixed, Switch, ConstructError, MappingError, \
+    Adapter, Subconstruct, Container, ListContainer, Prefixed, Switch, ConstructError, MappingError, Construct, \
+    StopFieldError, StreamError, \
     stream_tell, stream_seek
 from typing import Any, Dict, Iterator, TypeVar, Union, List, Tuple, IO, Type, OrderedDict
-
-from construct.core import Construct
 
 from .noemit import NoEmitMixin
 from .rawcopy import RawCopyBytes
@@ -73,6 +72,28 @@ class EnumConvert(Subconstruct):
             raise MappingError(f'expected `{self.enum.__name__}` value, got {obj!r}', path=path)
         super()._build(obj.value, stream, context, path)
         return obj
+
+
+class StrictGreedyRange(Subconstruct):
+    '''
+    Similar to :class:`construct.GreedyRange`, but only returns collected values if a
+    :class:`construct.StopFieldError` or :class:`construct.StreamError` occurred,
+    and raises/forwards any other exceptions
+    '''
+
+    def _parse(self, stream, context, path):
+        obj = ListContainer()
+        try:
+            while True:
+                obj.append(self.subcon._parse(stream, context, path))
+        except (StopFieldError, StreamError):
+            pass
+        except Exception:
+            raise
+        return obj
+
+    def _build(self, obj, stream, context, path):
+        raise NotImplementedError
 
 
 #####

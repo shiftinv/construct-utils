@@ -1,5 +1,4 @@
-from construct import Struct, Subconstruct, ConstructError
-from construct.core import Construct
+from construct import Struct, Subconstruct, ConstructError, Construct
 
 from .noemit import NoEmitMixin
 
