@@ -19,4 +19,4 @@ jobs:
           pip install pytest pytest-cov
       - name: Run tests
         run: |
-          pytest --cov --cov-config=.coveragerc ./tests
+          pytest --cov --cov-branch --cov-config=.coveragerc ./tests
