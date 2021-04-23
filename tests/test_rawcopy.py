@@ -40,11 +40,6 @@ def test_build():
     assert s.build([1, 2, 3]) == b'\x01\x02\x03'
 
 
-def test_unsupported_subcon():
-    with pytest.raises(RawCopyError):
-        AttributeRawCopy(Byte)
-
-
 def test_duplicate():
     s = Struct(
         'value' @ AttributeRawCopy(Struct(
@@ -64,6 +59,8 @@ def test_inline():
         'b' / Computed(this.raw)
     )
 
-    assert s.parse(b'\x01') == {'a': 1, 'b': b'\x01'}
+    value = s.parse(b'\x01')
+    assert value == {'a': 1, 'b': b'\x01'}
+    assert value.raw == b'\x01'
 
     assert s.build({'a': 1}) == b'\x01'

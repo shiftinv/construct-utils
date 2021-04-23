@@ -78,7 +78,10 @@ class StrictGreedyRange(Subconstruct):
     '''
     Similar to :class:`construct.GreedyRange`, but only returns collected values if a
     :class:`construct.StopFieldError` or :class:`construct.StreamError` occurred,
-    and raises/forwards any other exceptions
+    and raises/forwards any other exceptions.
+
+    Does *not* seek back to previous block on errors to avoid
+    inconsistencies between seekable and non-seekable streams.
     '''
 
     def _parse(self, stream, context, path):

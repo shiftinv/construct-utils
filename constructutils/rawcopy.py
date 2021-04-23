@@ -11,7 +11,7 @@ class RawCopyError(ConstructError):
 
 class RawCopyBytes(bytes):
     '''
-    Wrapper around :class:`bytes`, used for copying custom attributes in :class:`DictZipAdapter`
+    Wrapper around :class:`bytes`, used for copying custom attributes in other classes
     '''
     pass
 
@@ -41,8 +41,6 @@ class AttributeRawCopy(NoEmitMixin, RawCopy):
     __raw_key = '__raw__'
 
     def __init__(self, subcon: Union[Struct, Array], raw_key: Optional[str] = None):
-        if not isinstance(subcon, (Struct, Array)):
-            raise RawCopyError('AttributeRawCopy must contain `Struct` or `Array` instance')
         super().__init__(subcon)
 
         if raw_key is not None:

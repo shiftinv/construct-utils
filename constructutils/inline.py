@@ -1,5 +1,6 @@
 from construct import Struct, Subconstruct, ConstructError, Construct
 
+from . import rawcopy
 from .noemit import NoEmitMixin
 
 
@@ -68,6 +69,11 @@ class InliningStruct(NoEmitMixin, Struct):
             subobj = obj.pop(s.name)
             # insert parsed values into outer object
             obj.update(subobj)
+
+            # copy attributes set by :class:`AttributeRawCopy`
+            for k, v in subobj.__dict__.items():
+                if isinstance(v, rawcopy.RawCopyBytes):
+                    object.__setattr__(obj, k, v)
         return obj
 
     def _build(self, obj, stream, context, path):
