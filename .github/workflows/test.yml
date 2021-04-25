@@ -15,8 +15,7 @@ jobs:
           python-version: ${{ matrix.pyver }}
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
-          pip install pytest pytest-cov
+          pip install -U -e '.[dev]'
       - name: Run tests
         run: |
           pytest --cov --cov-branch --cov-config=.coveragerc ./tests
